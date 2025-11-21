@@ -16,11 +16,22 @@ BLACK = (0, 0, 0)
 GREEN = (0, 150, 0)
 LIGHT_GREY = (200, 200, 200)
 
+FLOWER = (232, 101, 135)
+FRUIT = (255, 180, 2)
+TREE = (100, 175, 30)
+
+
 # 植物種類定義 (與您的數據結構一致)
 PLANT_TYPES = {
     1: "Leisure",  # 花
     2: "Work",  # 果樹
     3: "Commuting"  # 樹
+}
+
+PLANT_COLORS = {
+    1: FLOWER,
+    2: FRUIT,
+    3: TREE
 }
 
 STAGE_DURATIONS = {
@@ -144,7 +155,7 @@ def draw_text(surface, text, font, color, x, y, center=False, bg_color=None, pad
 
     # 如果有背景顏色，先繪製背景矩形
     if bg_color is not None:
-        bg_rect = text_rect.inflate(padding * 2, padding * 2)
+        bg_rect = text_rect.inflate(padding * 1.5, padding * 1.5)
         pygame.draw.rect(surface, bg_color, bg_rect)
 
     # 繪製文字
@@ -220,6 +231,7 @@ class ThrivingLikeTrees:
             font_path = pygame.font.get_default_font()  # fallback
 
         self.font_small = pygame.font.Font(font_path, 12)
+        self.font_smallMedium = pygame.font.Font(font_path, 16)
         self.font_medium = pygame.font.Font(font_path, 24)
         self.font_large = pygame.font.Font(font_path, 36)
 
@@ -282,7 +294,7 @@ class ThrivingLikeTrees:
                 if self.is_timing:
                     # 強制停止計時並計算時間
                     self.current_duration = int(time.time() - self.start_time)
-                    self.stop_timer(event_name="未命名活動")
+                    self.stop_timer(event_name="Event")
                 save_data(self.data)
                 pygame.quit()
                 sys.exit()
@@ -465,8 +477,8 @@ class ThrivingLikeTrees:
                     label_text_1 = f"{PLANT_TYPES.get(plant_type, 'N/A')}: {event_name}"
                     label_text_2 = f"{format_time(duration_to_display)}"
 
-                draw_text(self.screen, label_text_1, self.font_small, BLACK, x, y - 85, center=True, bg_color=WHITE)
-                draw_text(self.screen, label_text_2, self.font_small, BLACK, x, y - 60, center=True, bg_color=WHITE)
+                draw_text(self.screen, label_text_1, self.font_smallMedium, BLACK, x + (i % 3 - 1) * 30, y - 80, center=True, bg_color=PLANT_COLORS.get(plant_type))
+                draw_text(self.screen, label_text_2, self.font_small, BLACK, x + (i % 3 - 1) * 30, y - 60, center=True, bg_color=PLANT_COLORS.get(plant_type))
 
         # --- 繪製植物選擇按鈕 ---
         for plant_type, rect in BUTTON_RECTS.items():
@@ -482,7 +494,7 @@ class ThrivingLikeTrees:
         # --- 繪製計時器 ---
         # 修改點 2: 如果在計時中 OR 在輸入名稱狀態，都顯示 current_duration
         timer_text = format_time(self.current_duration) if is_active_session else "00:00:00"
-        draw_text(self.screen, timer_text, self.font_large, BLACK, 800, 40, center=True)
+        draw_text(self.screen, timer_text, self.font_large, BLACK, 800, 40, center=True, bg_color=LIGHT_GREY)
 
         # --- 繪製開始/停止按鈕 ---
         if is_active_session:
@@ -494,11 +506,11 @@ class ThrivingLikeTrees:
 
         # --- 繪製頁面切換按鈕 ---
         draw_text(self.screen, "<", self.font_large, BLACK, self.prev_page_rect.centerx, self.prev_page_rect.centery,
-                  center=True)
+                  center=True, bg_color=LIGHT_GREY)
         draw_text(self.screen, ">", self.font_large, BLACK, self.next_page_rect.centerx, self.next_page_rect.centery,
-                  center=True)
+                  center=True, bg_color=LIGHT_GREY)
         page_info = f"Garden {self.current_field_index + 1}/{len(self.data['trees'])}"
-        draw_text(self.screen, page_info, self.font_medium, BLACK, SCREEN_WIDTH // 2, 25, center=True)
+        draw_text(self.screen, page_info, self.font_medium, BLACK, SCREEN_WIDTH // 2, 25, center=True, bg_color=WHITE)
 
         # --- 繪製主頁按鈕 (左下角) ---
         button_img = self.home_button_img
@@ -529,7 +541,6 @@ class ThrivingLikeTrees:
                   SCREEN_HEIGHT // 2 + 60, center=True)
 
     def run(self):
-        """遊戲主循環。"""
         running = True
         while running:
             self.handle_input()
@@ -540,11 +551,9 @@ class ThrivingLikeTrees:
 
 
 if __name__ == '__main__':
-    # 創建一個空的 image 資料夾以便運行
     if not os.path.exists('image'):
         os.makedirs('image')
 
-    # 確保 data.json 存在
     if not os.path.exists(DATA_FILE):
         save_data(create_initial_data())
 
