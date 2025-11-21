@@ -5,7 +5,6 @@ import os
 import time
 
 # --- 設定常數 ---
-# 遊戲尺寸: 應與背景圖片大小相同 (這裡假設為 800x600)
 SCREEN_WIDTH = 960
 SCREEN_HEIGHT = 540
 FPS = 60
@@ -24,39 +23,11 @@ PLANT_TYPES = {
     3: "Commuting"  # 樹
 }
 
-# 成長階段 (時間單位為秒)
-# STAGE_DURATIONS = {
-#     1: 15 * 60,  # 900 秒 (0-15 分鐘)
-#     2: 30 * 60,  # 1800 秒 (15-30 分鐘)
-#     3: float('inf')  # >30 分鐘
-# }
 STAGE_DURATIONS = {
     1: 4,  # 900 秒 (0-15 分鐘)
     2: 6,  # 1800 秒 (15-30 分鐘)
     3: float('inf')  # >30 分鐘
 }
-
-# 網格座標 (用於 3x3 網格, 這裡假設了中心樹的位置和間隔)
-# 這是根據圖片大致估計的中心點，您可能需要根據實際圖片調整
-# 座標順序: 左上(0) -> 右上(2) -> 中間左(3) -> 中間右(5) -> 左下(6) -> 右下(8)
-PLOT_POSITIONS = [
-    (200, 150), (400, 150), (600, 150),
-    (200, 300), (400, 300), (600, 300),  # 網格中心應是 (400, 300) 附近的大樹位置
-    (200, 450), (400, 450), (600, 450)
-]
-
-
-# 這裡將中心的大樹視為背景的一部分或不可種植的固定元素，
-# 故將網格繪製在周圍 8 塊，但文件說是 9 塊，
-# 程式中以 9 塊 (3x3) 網格處理，並調整座標以適應圖片。
-# 圖片看起來只有 8 塊土壤和一個中心大樹，如果中心大樹是固定的，那只有 8 個可種植位置。
-# 但文件說有 9 塊，所以程式碼將使用 9 個位置。
-# 調整後的 9 塊位置 (假設樹木圖像大小約 200x200):
-PLOT_POSITIONS = [
-    (250, 150), (400, 150), (550, 150),
-    (250, 300), (400, 300), (550, 300),
-    (250, 450), (400, 450), (550, 450)
-]
 
 PLOT_POSITIONS = [
     (355, 145), (480, 145), (605, 145),
@@ -65,12 +36,6 @@ PLOT_POSITIONS = [
 ]
 
 # 植物選擇按鈕位置 (根據圖片右側的三個按鈕)
-BUTTON_RECTS = {
-    1: pygame.Rect(855, 155, 80, 80),  # 花 (Leisure)
-    2: pygame.Rect(855, 240, 80, 80),  # 果樹 (Work)
-    3: pygame.Rect(855, 325, 80, 80)  # 樹 (Commuting)
-}
-
 BUTTON_RECTS = {
     1: pygame.Rect(855, 155, 80, 80),  # 花 (Leisure)
     2: pygame.Rect(855, 240, 80, 80),  # 果樹 (Work)
@@ -86,7 +51,6 @@ home_button_rect = pygame.Rect(-6.5, 477, 320, 100)
 # --- 資料處理函式 ---
 
 def load_data():
-    """從 JSON 檔案載入資料。如果檔案不存在，則建立新的初始資料。"""
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, 'r', encoding='utf-8') as f:
@@ -99,7 +63,6 @@ def load_data():
 
 
 def create_initial_data():
-    """建立符合結構的初始資料。"""
     new_field = {
         "type": [0] * 9,
         "time": [0] * 9,
@@ -112,7 +75,6 @@ def create_initial_data():
 
 
 def save_data(data):
-    """將資料存入 JSON 檔案。"""
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
@@ -128,7 +90,6 @@ def get_current_planting_index(data):
 
 
 def create_new_field(data):
-    """當前頁面滿時，新增一個新的 3x3 網格頁面。"""
     new_field = {
         "type": [0] * 9,
         "time": [0] * 9,
@@ -141,7 +102,6 @@ def create_new_field(data):
 # --- 資源載入函式 ---
 
 def load_image(filepath, size=None):
-    """載入圖片並轉換以優化繪圖，可選調整大小。"""
     try:
         image = pygame.image.load(filepath).convert_alpha()  # 使用 convert_alpha 支援透明度
         if size:
@@ -184,11 +144,8 @@ def draw_text(surface, text, font, color, x, y, center=False, bg_color=None, pad
 
     # 如果有背景顏色，先繪製背景矩形
     if bg_color is not None:
-        # 建立背景矩形（比文字大一點）
         bg_rect = text_rect.inflate(padding * 2, padding * 2)
         pygame.draw.rect(surface, bg_color, bg_rect)
-        # 可選：加上邊框
-        # pygame.draw.rect(surface, (0, 0, 0), bg_rect, 2)
 
     # 繪製文字
     surface.blit(text_surface, text_rect)
@@ -256,7 +213,12 @@ class ThrivingLikeTrees:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Thriving like Trees")
         self.clock = pygame.time.Clock()
+
+        # 嘗試尋找系統中文字體，避免中文顯示亂碼
         font_path = "C:/Windows/Fonts/msyh.ttc"  # 微軟雅黑
+        if not os.path.exists(font_path):
+            font_path = pygame.font.get_default_font()  # fallback
+
         self.font_small = pygame.font.Font(font_path, 12)
         self.font_medium = pygame.font.Font(font_path, 24)
         self.font_large = pygame.font.Font(font_path, 36)
@@ -302,7 +264,6 @@ class ThrivingLikeTrees:
         self.next_page_rect = pygame.Rect(SCREEN_WIDTH - 250, SCREEN_HEIGHT // 2, 50, 50)
 
         # 主頁按鈕 (左下角)
-        #self.home_button_rect = pygame.Rect(23.5, 483, 40, 40)
         self.home_button_rect = pygame.Rect(0, 480, 320, 100)
 
         # 進入遊戲按鈕 (在主頁中央)
@@ -317,7 +278,10 @@ class ThrivingLikeTrees:
         """處理 Pygame 事件。"""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                # 如果在計時中退出，嘗試儲存（這裡設為未命名）
                 if self.is_timing:
+                    # 強制停止計時並計算時間
+                    self.current_duration = int(time.time() - self.start_time)
                     self.stop_timer(event_name="未命名活動")
                 save_data(self.data)
                 pygame.quit()
@@ -339,6 +303,8 @@ class ThrivingLikeTrees:
                     # 主頁按鈕 (左下角)
                     if self.home_button_rect.collidepoint(mouse_pos):
                         if self.is_timing:
+                            # 如果還在計時就回首頁，強制結算
+                            self.current_duration = int(time.time() - self.start_time)
                             self.stop_timer(event_name="未命名活動")
                         self.state = 'HOME'
                         self.selected_plant_type = 0
@@ -358,7 +324,12 @@ class ThrivingLikeTrees:
                             else:
                                 self.show_warning("請先選擇植物種類", duration=2)
                         else:
-                            self.state = 'INPUT_NAME'  # 停止計時並進入輸入名稱狀態
+                            # --- 修改點 1: 按下 Stop 時立刻停止計時邏輯 ---
+                            self.is_timing = False  # 停止計時旗標
+                            # 立刻鎖定當前的持續時間，不再隨時間增加
+                            self.current_duration = int(time.time() - self.start_time)
+
+                            self.state = 'INPUT_NAME'  # 進入輸入名稱狀態
                             self.input_box.text = ''  # 清空輸入框
                             self.input_box.active = True  # 自動聚焦
 
@@ -392,10 +363,10 @@ class ThrivingLikeTrees:
         print(f"Timer started for {PLANT_TYPES[self.selected_plant_type]}. Planting at index {self.planting_index}")
 
     def stop_timer(self, event_name):
-        """停止計時，計算持續時間，並更新資料。"""
-        self.is_timing = False
-        end_time = time.time()
-        self.current_duration = int(end_time - self.start_time)
+        """
+        保存數據。
+        注意：這裡不再計算時間，因為在 handle_input 按下 Stop 時已經鎖定在 self.current_duration 了。
+        """
 
         # 更新資料
         current_field = self.data['trees'][-1]
@@ -405,12 +376,13 @@ class ThrivingLikeTrees:
             # 確保是在最新的田地進行種植
             if current_field['type'][self.planting_index] == 0:
                 current_field['type'][self.planting_index] = self.selected_plant_type
+                # 使用已經鎖定的 self.current_duration
                 current_field['time'][self.planting_index] = self.current_duration
                 current_field['eventName'][self.planting_index] = event_name
 
                 # 儲存資料
                 save_data(self.data)
-                print(f"Timer stopped. Duration: {self.current_duration}s. Saved as '{event_name}'")
+                print(f"Data saved. Duration: {self.current_duration}s. Name: '{event_name}'")
             else:
                 print("Error: Plot was unexpectedly not empty.")
         else:
@@ -420,9 +392,12 @@ class ThrivingLikeTrees:
         self.current_duration = 0
         self.selected_plant_type = 0
         self.planting_index = -1
+        # self.is_timing 已經在 handle_input 設為 False 了
 
     def update(self):
         """更新遊戲邏輯，例如計時器。"""
+        # 只有當 is_timing 為 True 時才更新時間
+        # 當按下 Stop 進入 INPUT_NAME 狀態後，is_timing 會變成 False，時間就會鎖定
         if self.is_timing:
             self.current_duration = int(time.time() - self.start_time)
 
@@ -433,7 +408,7 @@ class ThrivingLikeTrees:
         elif self.state == 'GARDEN_VIEW':
             self.draw_garden()
         elif self.state == 'INPUT_NAME':
-            self.draw_garden()  # 先畫花園
+            self.draw_garden()  # 先畫花園 (讓背景和植物保持顯示)
             self.draw_input_name()  # 再疊上輸入框
 
         pygame.display.flip()
@@ -453,6 +428,10 @@ class ThrivingLikeTrees:
         # --- 繪製園丁網格 (當前頁面) ---
         current_field = self.data['trees'][self.current_field_index]
 
+        # 判斷是否應該顯示「正在種植」的狀態
+        # 條件：正在計時(is_timing) 或者 正在輸入名稱(INPUT_NAME)
+        is_active_session = self.is_timing or (self.state == 'INPUT_NAME')
+
         for i in range(9):
             x, y = PLOT_POSITIONS[i]
             plant_type = current_field['type'][i]
@@ -462,8 +441,9 @@ class ThrivingLikeTrees:
             duration_to_display = plant_time
             is_growing_now = False
 
-            # 正在計時且是當前種植位置
-            if self.is_timing and self.planting_index == i and self.current_field_index == len(self.data['trees']) - 1:
+            # 正在計時(或等待輸入)且是當前種植位置
+            if is_active_session and self.planting_index == i and self.current_field_index == len(
+                    self.data['trees']) - 1:
                 duration_to_display = self.current_duration
                 plant_type = self.selected_plant_type
                 is_growing_now = True
@@ -480,7 +460,7 @@ class ThrivingLikeTrees:
                 label_text_2 = ""
                 if is_growing_now:
                     label_text_1 = f"{PLANT_TYPES.get(plant_type, 'N/A')}: {format_time(duration_to_display)}"
-                    label_text_2 = "(GROWING...)"
+                    label_text_2 = "(GROWING...)" if self.is_timing else "(PAUSED)"  # 等待輸入時顯示 PAUSED
                 else:
                     label_text_1 = f"{PLANT_TYPES.get(plant_type, 'N/A')}: {event_name}"
                     label_text_2 = f"{format_time(duration_to_display)}"
@@ -500,11 +480,12 @@ class ThrivingLikeTrees:
                 pygame.draw.rect(self.screen, GREEN, rect, 3)
 
         # --- 繪製計時器 ---
-        timer_text = format_time(self.current_duration) if self.is_timing else "00:00:00"
+        # 修改點 2: 如果在計時中 OR 在輸入名稱狀態，都顯示 current_duration
+        timer_text = format_time(self.current_duration) if is_active_session else "00:00:00"
         draw_text(self.screen, timer_text, self.font_large, BLACK, 800, 40, center=True)
 
         # --- 繪製開始/停止按鈕 ---
-        if self.is_timing:
+        if is_active_session:
             button_img = self.stop_button_img
         else:
             button_img = self.start_button_img
@@ -520,9 +501,6 @@ class ThrivingLikeTrees:
         draw_text(self.screen, page_info, self.font_medium, BLACK, SCREEN_WIDTH // 2, 25, center=True)
 
         # --- 繪製主頁按鈕 (左下角) ---
-        #pygame.draw.rect(self.screen, (255, 247, 214), self.home_button_rect)
-        #draw_text(self.screen, "🏠", self.font_large, BLACK, self.home_button_rect.centerx,
-                  #self.home_button_rect.centery, center=True)
         button_img = self.home_button_img
         self.screen.blit(button_img, home_button_rect)
 
