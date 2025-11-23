@@ -63,6 +63,10 @@ BUTTON_RECTS = {
 START_BUTTON_RECT = pygame.Rect(425, 475, 100, 50)
 home_button_rect = pygame.Rect(-6.5, 477, 320, 100)
 
+# --- 個人檔案按鈕位置（左上角圓形） ---
+PROFILE_BUTTON_CENTER = (42, 40)
+PROFILE_BUTTON_RADIUS = 30
+
 # --- DEV 工具按鈕位置 ---
 DEV_TOGGLE_RECT = pygame.Rect(100, 10, 50, 30)  # 左上角開關
 DEV_MENU_BG_RECT = pygame.Rect(100, 45, 200, 100)  # 選單背景
@@ -91,7 +95,7 @@ def create_initial_data():
         "eventName": [""] * 9
     }
     return {
-        "name": "UserName",
+        "name": "",  # 空字串，確保會觸發輸入名稱視窗
         "trees": [new_field]
     }
 
@@ -120,6 +124,22 @@ def create_new_field(data):
     data['trees'].append(new_field)
     save_data(data)  # 儲存新頁面
 
+def calculate_statistics(data):
+    """計算玩家統計數據"""
+    stats = {
+        1: {"count": 0, "total_time": 0},  # Leisure (花)
+        2: {"count": 0, "total_time": 0},  # Work (果樹)
+        3: {"count": 0, "total_time": 0}   # Commuting (樹)
+    }
+    
+    for field in data['trees']:
+        for i in range(9):
+            plant_type = field['type'][i]
+            if plant_type != 0:
+                stats[plant_type]["count"] += 1
+                stats[plant_type]["total_time"] += field['time'][i]
+    
+    return stats
 
 # --- 資源載入函式 ---
 
@@ -174,6 +194,11 @@ def format_time(total_seconds):
     seconds = int(total_seconds % 60)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
+def is_point_in_circle(point, center, radius):
+    """檢查點是否在圓內"""
+    dx = point[0] - center[0]
+    dy = point[1] - center[1]
+    return (dx * dx + dy * dy) <= (radius * radius)
 
 # --- 文字輸入框 ---
 
@@ -258,6 +283,7 @@ class ThrivingLikeTrees:
         self.warning_time = 0
 
         self.input_box = TextInputBox(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, 200, 40, self.font_medium)
+        self.name_input_box = TextInputBox(SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2, 300, 50, self.font_large)
 
         self.prev_page_rect = pygame.Rect(200, SCREEN_HEIGHT // 2, 50, 50)
         self.next_page_rect = pygame.Rect(SCREEN_WIDTH - 250, SCREEN_HEIGHT // 2, 50, 50)
@@ -266,6 +292,9 @@ class ThrivingLikeTrees:
 
         # --- DEV MENU 狀態 ---
         self.show_dev_menu = False
+
+        # --- Profile 狀態 ---
+        self.show_profile = False
 
     def show_warning(self, text, duration=2):
         self.warning_text = text
@@ -285,12 +314,44 @@ class ThrivingLikeTrees:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_pos = event.pos
                     if self.enter_game_button_rect.collidepoint(mouse_pos):
-                        self.state = 'GARDEN_VIEW'
-                        self.current_field_index = len(self.data['trees']) - 1
+                        # 檢查是否已有名字
+                        if not self.data.get('name') or self.data['name'] == "" or self.data['name'] == "UserName":
+                            self.state = 'INPUT_PLAYER_NAME'
+                            self.name_input_box.text = ''
+                            self.name_input_box.active = True
+                            print("Switching to INPUT_PLAYER_NAME state")  # Debug
+                        else:
+                            self.state = 'GARDEN_VIEW'
+                            self.current_field_index = len(self.data['trees']) - 1
+                            print(f"Player name exists: {self.data['name']}")  # Debug
+
+            elif self.state == 'INPUT_PLAYER_NAME':
+                player_name = self.name_input_box.handle_event(event)
+                if player_name is not None and player_name.strip() != "":
+                    self.data['name'] = player_name.strip()
+                    save_data(self.data)
+                    print(f"Player name saved: {player_name.strip()}")  # Debug
+                    self.state = 'GARDEN_VIEW'
+                    self.current_field_index = len(self.data['trees']) - 1
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    # 按 ESC 可以返回主畫面
+                    self.state = 'HOME'
+
+            elif self.state == 'PROFILE_VIEW':
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    # 點擊任何地方關閉 Profile
+                    self.show_profile = False
+                    self.state = 'GARDEN_VIEW'
 
             elif self.state == 'GARDEN_VIEW':
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_pos = event.pos
+
+                    # --- Profile 按鈕檢測 ---
+                    if is_point_in_circle(mouse_pos, PROFILE_BUTTON_CENTER, PROFILE_BUTTON_RADIUS):
+                        self.show_profile = True
+                        self.state = 'PROFILE_VIEW'
+                        return
 
                     # --- DEV MENU 邏輯 ---
                     # 1. 切換選單開關
@@ -377,7 +438,7 @@ class ThrivingLikeTrees:
         save_data(self.data, backup_filename)
         print(f"Backup saved to {backup_filename}")
 
-        # 3. 重置數據
+        # 3. 重置資料
         self.data = create_initial_data()
         save_data(self.data)  # 覆寫原本的 data.json
 
@@ -387,6 +448,11 @@ class ThrivingLikeTrees:
         self.current_duration = 0
         self.selected_plant_type = 0
         self.planting_index = -1
+
+        # 5. 切換回主頁
+        self.state = 'HOME'
+        self.show_dev_menu = False
+
         print("Data reset to initial state.")
 
     def start_timer(self):
@@ -425,6 +491,9 @@ class ThrivingLikeTrees:
     def draw(self):
         if self.state == 'HOME':
             self.draw_home()
+        elif self.state == 'INPUT_PLAYER_NAME':
+            self.draw_home()
+            self.draw_name_input()
         elif self.state == 'GARDEN_VIEW':
             self.draw_garden()
             # 繪製開發者選單 (最上層)
@@ -435,6 +504,9 @@ class ThrivingLikeTrees:
                 pygame.draw.rect(self.screen, DARK_GREY, DEV_TOGGLE_RECT)
                 draw_text(self.screen, "DEV", self.font_small, WHITE, DEV_TOGGLE_RECT.centerx, DEV_TOGGLE_RECT.centery,
                           center=True)
+        elif self.state == 'PROFILE_VIEW':
+            self.draw_garden()
+            self.draw_profile()
 
         elif self.state == 'INPUT_NAME':
             self.draw_garden()
@@ -468,8 +540,79 @@ class ThrivingLikeTrees:
         self.screen.blit(self.home_img, (0, 0))
         self.screen.blit(self.start_button_img, self.enter_game_button_rect)
 
+    def draw_name_input(self):
+        """繪製輸入玩家名字的畫面"""
+        s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        s.fill((0, 0, 0, 180))
+        self.screen.blit(s, (0, 0))
+        
+        draw_text(self.screen, "Enter Your Name:", self.font_large, WHITE, 
+                  SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 80, center=True)
+        
+        self.name_input_box.draw(self.screen)
+        
+        draw_text(self.screen, "(Press Enter to Continue)", self.font_medium, WHITE, 
+                  SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80, center=True)
+
+    def draw_profile(self):
+        """繪製玩家檔案視窗"""
+        # 半透明背景
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        self.screen.blit(overlay, (0, 0))
+
+        # 視窗背景
+        panel_rect = pygame.Rect(150, 80, 660, 400)
+        pygame.draw.rect(self.screen, (240, 240, 220), panel_rect)
+        pygame.draw.rect(self.screen, (100, 100, 80), panel_rect, 4)
+
+        # 標題
+        draw_text(self.screen, "Player Profile", self.font_large, (80, 80, 60), 
+                  SCREEN_WIDTH // 2, 120, center=True)
+
+        # 玩家名稱
+        player_name = self.data.get('name', 'Unknown')
+        draw_text(self.screen, f"Name: {player_name}", self.font_medium, BLACK, 
+                  SCREEN_WIDTH // 2, 180, center=True)
+
+        # 計算統計數據
+        stats = calculate_statistics(self.data)
+
+        # 繪製統計數據
+        y_offset = 230
+        for plant_type, label in PLANT_TYPES.items():
+            count = stats[plant_type]["count"]
+            total_time = stats[plant_type]["total_time"]
+            color = PLANT_COLORS[plant_type]
+
+            # 圖示 (小圓點)
+            pygame.draw.circle(self.screen, color, (220, y_offset + 10), 12)
+
+            # 文字標籤
+            text = f"{label}: {count} plants  |  {format_time(total_time)}"
+            draw_text(self.screen, text, self.font_smallMedium, BLACK, 250, y_offset)
+
+            # 長條圖 (基於數量)
+            bar_width = min(count * 15, 300)  # 每個植物 15 像素寬，最大 300
+            bar_rect = pygame.Rect(250, y_offset + 30, bar_width, 20)
+            pygame.draw.rect(self.screen, color, bar_rect)
+            pygame.draw.rect(self.screen, BLACK, bar_rect, 1)
+
+            y_offset += 80
+
+        # 提示文字
+        draw_text(self.screen, "(Click anywhere to close)", self.font_small, (120, 120, 120), 
+                  SCREEN_WIDTH // 2, 450, center=True)
+
     def draw_garden(self):
         self.screen.blit(self.background_img, (0, 0))
+        
+        # 繪製 Profile 按鈕 (半透明圓形覆蓋層)
+        s = pygame.Surface((PROFILE_BUTTON_RADIUS * 2, PROFILE_BUTTON_RADIUS * 2), pygame.SRCALPHA)
+        pygame.draw.circle(s, (255, 255, 255, 40), (PROFILE_BUTTON_RADIUS, PROFILE_BUTTON_RADIUS), PROFILE_BUTTON_RADIUS)
+        self.screen.blit(s, (PROFILE_BUTTON_CENTER[0] - PROFILE_BUTTON_RADIUS, 
+                              PROFILE_BUTTON_CENTER[1] - PROFILE_BUTTON_RADIUS))
+        
         current_field = self.data['trees'][self.current_field_index]
         is_active_session = self.is_timing or (self.state == 'INPUT_NAME')
 
