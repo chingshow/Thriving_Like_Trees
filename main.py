@@ -467,6 +467,7 @@ class ThrivingLikeTrees:
         print(f"Timer started. Index: {self.planting_index}")
 
     def stop_timer(self, event_name):
+        self.is_timing = False
         current_field = self.data['trees'][-1]
         if self.selected_plant_type != 0 and self.planting_index != -1:
             if current_field['type'][self.planting_index] == 0:
