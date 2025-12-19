@@ -37,12 +37,11 @@ PLANT_COLORS = {
 }
 
 STAGE_DURATIONS = {
-    1: 4,  # 模擬 Demo 用：極短時間 (實際應為 900)
-    2: 6,  # 模擬 Demo 用：極短時間 (實際應為 1800)
+    1: 4,  # 模擬 Demo 用
+    2: 6,  # 模擬 Demo 用
     3: float('inf')
 }
-# 為了 Demo 效果，我把上面的時間改得很短。
-# 如果你需要真實時間 15分鐘/30分鐘，請改回：
+#  15分鐘/30分鐘：
 # STAGE_DURATIONS = { 1: 900, 2: 1800, 3: float('inf') }
 
 
@@ -95,7 +94,7 @@ def create_initial_data():
         "eventName": [""] * 9
     }
     return {
-        "name": "",  # 空字串，確保會觸發輸入名稱視窗
+        "name": "",
         "trees": [new_field]
     }
 
@@ -106,7 +105,6 @@ def save_data(data, filename=DATA_FILE):
 
 
 def get_current_planting_index(data):
-    """找到當前頁面中第一個空的種植位置 (type=0)。"""
     current_field = data['trees'][-1]
     try:
         return current_field['type'].index(0)  # 找到第一個 0 的索引
@@ -124,8 +122,8 @@ def create_new_field(data):
     data['trees'].append(new_field)
     save_data(data)  # 儲存新頁面
 
+
 def calculate_statistics(data):
-    """計算玩家統計數據"""
     stats = {
         1: {"count": 0, "total_time": 0},  # Leisure (花)
         2: {"count": 0, "total_time": 0},  # Work (果樹)
@@ -141,7 +139,6 @@ def calculate_statistics(data):
     
     return stats
 
-# --- 資源載入函式 ---
 
 def load_image(filepath, size=None):
     try:
@@ -157,7 +154,6 @@ def load_image(filepath, size=None):
 
 
 def get_plant_sprite(plant_type, duration):
-    """根據植物種類和持續時間回傳對應的圖片。"""
     if duration < STAGE_DURATIONS[1]:
         stage = 1
     elif duration < STAGE_DURATIONS[2]:
@@ -168,8 +164,6 @@ def get_plant_sprite(plant_type, duration):
     filepath = f'./image/plant{plant_type}_{stage}.png'
     return load_image(filepath, (100, 100))
 
-
-# --- Pygame 輔助函式 ---
 
 def draw_text(surface, text, font, color, x, y, center=False, bg_color=None, padding=5):
     text_surface = font.render(text, True, color)
@@ -361,7 +355,7 @@ class ThrivingLikeTrees:
 
                     # 2. 如果選單開啟，處理選單按鈕
                     if self.show_dev_menu:
-                        # 功能 A: 備份並重置
+                        # 備份並重置
                         if DEV_RESET_RECT.collidepoint(mouse_pos):
                             self.backup_and_reset_data()
                             self.show_dev_menu = False  # 關閉選單
@@ -399,7 +393,7 @@ class ThrivingLikeTrees:
                     if START_BUTTON_RECT.collidepoint(mouse_pos):
                         if not self.is_timing:
                             if self.selected_plant_type != 0:
-                                # --- 修改點 1: 自動跳轉到最新頁面 ---
+                                # --- 自動跳轉到最新頁面 ---
                                 latest_page_idx = len(self.data['trees']) - 1
                                 if self.current_field_index != latest_page_idx:
                                     print(f"Auto-jumping to latest field: {latest_page_idx}")
@@ -429,8 +423,7 @@ class ThrivingLikeTrees:
                     self.state = 'GARDEN_VIEW'
 
     def backup_and_reset_data(self):
-        """備份當前資料並重置"""
-        # 1. 產生備份檔名 (data_20231027_103001.json)
+        # 1. 產生備份檔名
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         backup_filename = f"data_{timestamp}.json"
 
@@ -501,7 +494,6 @@ class ThrivingLikeTrees:
             if self.show_dev_menu:
                 self.draw_dev_menu()
             else:
-                # 只畫一個小按鈕
                 pygame.draw.rect(self.screen, DARK_GREY, DEV_TOGGLE_RECT)
                 draw_text(self.screen, "DEV", self.font_small, WHITE, DEV_TOGGLE_RECT.centerx, DEV_TOGGLE_RECT.centery,
                           center=True)
@@ -516,12 +508,11 @@ class ThrivingLikeTrees:
         pygame.display.flip()
 
     def draw_dev_menu(self):
-        """繪製開發者選單"""
         # 背景
         pygame.draw.rect(self.screen, DARK_GREY, DEV_MENU_BG_RECT)
         pygame.draw.rect(self.screen, WHITE, DEV_MENU_BG_RECT, 2)  # 邊框
 
-        # Toggle 按鈕 (保持顯示以便關閉)
+        # Toggle 按鈕
         pygame.draw.rect(self.screen, RED, DEV_TOGGLE_RECT)
         draw_text(self.screen, "X", self.font_small, WHITE, DEV_TOGGLE_RECT.centerx, DEV_TOGGLE_RECT.centery,
                   center=True)
@@ -542,7 +533,6 @@ class ThrivingLikeTrees:
         self.screen.blit(self.start_button_img, self.enter_game_button_rect)
 
     def draw_name_input(self):
-        """繪製輸入玩家名字的畫面"""
         s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         s.fill((0, 0, 0, 180))
         self.screen.blit(s, (0, 0))
@@ -556,7 +546,6 @@ class ThrivingLikeTrees:
                   SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80, center=True)
 
     def draw_profile(self):
-        """繪製玩家檔案視窗"""
         # 半透明背景
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
@@ -586,7 +575,7 @@ class ThrivingLikeTrees:
             total_time = stats[plant_type]["total_time"]
             color = PLANT_COLORS[plant_type]
 
-            # 圖示 (小圓點)
+            # 圖示
             pygame.draw.circle(self.screen, color, (220, y_offset + 10), 12)
 
             # 文字標籤
@@ -594,21 +583,19 @@ class ThrivingLikeTrees:
             draw_text(self.screen, text, self.font_smallMedium, BLACK, 250, y_offset)
 
             # 長條圖 (基於數量)
-            bar_width = min(count * 15, 300)  # 每個植物 15 像素寬，最大 300
+            bar_width = min(count * 15, 300)
             bar_rect = pygame.Rect(250, y_offset + 30, bar_width, 20)
             pygame.draw.rect(self.screen, color, bar_rect)
             pygame.draw.rect(self.screen, BLACK, bar_rect, 1)
 
             y_offset += 80
 
-        # 提示文字
         draw_text(self.screen, "(Click anywhere to close)", self.font_small, (120, 120, 120), 
                   SCREEN_WIDTH // 2, 450, center=True)
 
     def draw_garden(self):
         self.screen.blit(self.background_img, (0, 0))
-        
-        # 繪製 Profile 按鈕 (半透明圓形覆蓋層)
+
         s = pygame.Surface((PROFILE_BUTTON_RADIUS * 2, PROFILE_BUTTON_RADIUS * 2), pygame.SRCALPHA)
         pygame.draw.circle(s, (255, 255, 255, 40), (PROFILE_BUTTON_RADIUS, PROFILE_BUTTON_RADIUS), PROFILE_BUTTON_RADIUS)
         self.screen.blit(s, (PROFILE_BUTTON_CENTER[0] - PROFILE_BUTTON_RADIUS, 
@@ -710,3 +697,4 @@ if __name__ == '__main__':
         save_data(create_initial_data())
     game = ThrivingLikeTrees()
     game.run()
+
